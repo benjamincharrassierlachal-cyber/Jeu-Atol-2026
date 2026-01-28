@@ -366,7 +366,7 @@ function updateSpecialBucketIfNeeded() {
 function pickObjectSrc() {
   updateSpecialBucketIfNeeded();
 
-  const allow3 = !spawnedThisBucket.object3;
+  const allow13 = !spawnedThisBucket.object13;
   const allow7 = !spawnedThisBucket.object7;
 
   const pool = ASSET_OBJECTS.filter(src => src !== "assets/object3.png" && src !== "assets/object7.png");
@@ -817,4 +817,5 @@ submitForm.onsubmit = async (e) => {
 
   draw();
 })();
+
 
