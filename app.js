@@ -14,6 +14,9 @@ const storeId = params.get("store") || "magasin-1";
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
+const elLevel = document.getElementById("level");
+must("level", elLevel);
+
 const hud = document.getElementById("hud");
 const elScore = document.getElementById("score");
 const elLives = document.getElementById("lives");
@@ -72,17 +75,17 @@ const ASSET_BAG = "assets/glasses.png";
 const ASSET_OBJECTS = Array.from({ length: 13 }, (_, i) => `assets/object${i + 1}.png`);
 
 const EFFECTS = {
-  "assets/object12.png": { scoreDelta: -50, sfx: "malus" },
-  "assets/object13.png": { scoreDelta: +50, sfx: "bonus" },
-  "assets/object3.png":  { lifeDelta: -1,  sfx: "lifeDown" },
-  "assets/object7.png":  { lifeDelta: +1,  sfx: "lifeUp" }
+  "assets/object3.png": { scoreDelta: -50, sfx: "malus" },
+  "assets/object7.png": { scoreDelta: +50, sfx: "bonus" },
+  "assets/object12.png":  { lifeDelta: -1,  sfx: "lifeDown" },
+  "assets/object13.png":  { lifeDelta: +1,  sfx: "lifeUp" }
 };
 
 // =====================
 //  SETTINGS
 // =====================
 const START_LIVES = 3;
-const MAX_MISSES = 7;
+const MAX_MISSES = 200;
 
 // +2 objets max à l’écran tous les 100 points
 const START_MAX_ONSCREEN = 2;
@@ -99,7 +102,7 @@ const BASE = {
   rotMax: 1.4
 };
 
-// Rareté object3/object7 : max 1 de chaque / 500 points
+// Rareté object13/object3 : max 1 de chaque / 500 points
 const SPECIAL_BUCKET_POINTS = 500;
 
 // sac: peut sortir à 50% => centre clamp [0..W]
@@ -323,6 +326,8 @@ function resetAllHard() {
   elLives.textContent = String(lives);
   elMisses.textContent = String(misses);
 
+  elLevel.textContent = "1";
+
   clearDynamic();
 }
 
@@ -519,13 +524,31 @@ function drawBag() {
 }
 
 function drawItem(it) {
-  const size = Math.max(40, Math.round(Math.min(canvas._w, canvas._h) * 0.09));
+  // taille de référence (en CSS pixels)
+  const baseSize = Math.round(Math.min(canvas._w, canvas._h) * 0.09);
+
+  const img = it.sprite;
+  const ratio = img.width / img.height;
+
+  let w, h;
+
+  if (ratio >= 1) {
+    // image large (lunettes)
+    w = baseSize;
+    h = baseSize / ratio;
+  } else {
+    // image haute (spray, bouteille)
+    h = baseSize;
+    w = baseSize * ratio;
+  }
+
   ctx.save();
   ctx.translate(it.x, it.y);
   ctx.rotate(it.ang);
-  ctx.drawImage(it.sprite, -size / 2, -size / 2, size, size);
+  ctx.drawImage(img, -w / 2, -h / 2, w, h);
   ctx.restore();
 }
+
 
 function drawPops() {
   for (let i = pops.length - 1; i >= 0; i--) {
@@ -623,6 +646,9 @@ function step(ts) {
 
   const diff = currentDifficulty(score);
   if (Math.random() < diff.spawnChance) spawn();
+
+  // update level (discret)
+elLevel.textContent = String(diff.lvl + 1);
 
   // mouvement sliceur
   if (dragging) {
@@ -791,3 +817,4 @@ submitForm.onsubmit = async (e) => {
 
   draw();
 })();
+
