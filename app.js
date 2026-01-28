@@ -102,7 +102,7 @@ const BASE = {
   rotMax: 1.4
 };
 
-// Rareté object13/object3 : max 1 de chaque / 500 points
+// Rareté object13/object7 : max 1 de chaque / 500 points
 const SPECIAL_BUCKET_POINTS = 500;
 
 // sac: peut sortir à 50% => centre clamp [0..W]
@@ -251,7 +251,7 @@ let targetXInstant = 0;
 
 // bucket spéciaux
 let currentSpecialBucket = 0;
-let spawnedThisBucket = { object3: false, object7: false };
+let spawnedThisBucket = { object13: false, object7: false };
 
 // pause UI
 let pauseText = "";
@@ -316,7 +316,7 @@ function resetAllHard() {
   misses = 0;
 
   currentSpecialBucket = 0;
-  spawnedThisBucket.object3 = false;
+  spawnedThisBucket.object13 = false;
   spawnedThisBucket.object7 = false;
 
   player.w = 200;
@@ -358,7 +358,7 @@ function updateSpecialBucketIfNeeded() {
   const bucket = Math.floor(score / SPECIAL_BUCKET_POINTS);
   if (bucket !== currentSpecialBucket) {
     currentSpecialBucket = bucket;
-    spawnedThisBucket.object3 = false;
+    spawnedThisBucket.object13 = false;
     spawnedThisBucket.object7 = false;
   }
 }
@@ -369,7 +369,7 @@ function pickObjectSrc() {
   const allow13 = !spawnedThisBucket.object13;
   const allow7 = !spawnedThisBucket.object7;
 
-  const pool = ASSET_OBJECTS.filter(src => src !== "assets/object3.png" && src !== "assets/object7.png");
+  const pool = ASSET_OBJECTS.filter(src => src !== "assets/object13.png" && src !== "assets/object7.png");
 
   const roll = Math.random();
   if (allow13 && roll < 0.03) return "assets/object13.png";
@@ -389,7 +389,7 @@ function spawn() {
   const sprite = SPRITES.objects.get(src);
   if (!sprite) return;
 
-  if (src === "assets/object3.png") spawnedThisBucket.object3 = true;
+  if (src === "assets/object13.png") spawnedThisBucket.object13 = true;
   if (src === "assets/object7.png") spawnedThisBucket.object7 = true;
 
   const { speedMin, speedMax } = currentDifficulty(score);
@@ -461,7 +461,7 @@ function applyEffects(src, nowTs) {
 
   sfx(sound);
 
-  // Perte vie directe (object3)
+  // Perte vie directe (object13)
   if (deltaLife < 0) {
     if (lives <= 0) endGame();
     else pauseAfterLifeLost(`1 vie perdue — il te reste ${lives} ${livesLabel(lives)}`, nowTs);
@@ -817,6 +817,7 @@ submitForm.onsubmit = async (e) => {
 
   draw();
 })();
+
 
 
 
