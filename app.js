@@ -66,6 +66,8 @@ must("submitForm", submitForm);
 // =====================
 //  ASSETS
 // =====================
+// IMPORTANT: chemins relatifs (GitHub Pages / Netlify)
+// => PAS de "/" devant
 const ASSET_BAG = "assets/glasses.png";
 const ASSET_OBJECTS = Array.from({ length: 13 }, (_, i) => `assets/object${i + 1}.png`);
 
@@ -110,7 +112,7 @@ const OPENING = {
   yOffsetRatio: 0.18
 };
 
-// durée pause “vie perdue”
+// pause après perte de vie
 const LIFE_PAUSE_MS = 900;
 
 // =====================
@@ -149,6 +151,10 @@ function countsAsMiss(itemSrc) {
   if (typeof fx.scoreDelta === "number" && fx.scoreDelta < 0) return false;
   if (typeof fx.lifeDelta === "number" && fx.lifeDelta < 0) return false;
   return true;
+}
+
+function livesLabel(n) {
+  return n <= 1 ? "vie" : "vies";
 }
 
 // =====================
@@ -223,8 +229,9 @@ async function loadSprites() {
 // =====================
 const player = { x: 0, y: 0, w: 200, h: 140 };
 
-let items = [];
-let pops = [];
+// IMPORTANT: on garde TOUJOURS la même référence (pas de items = [])
+const items = [];
+const pops = [];
 
 let running = false;
 let paused = false;
@@ -243,6 +250,10 @@ let targetXInstant = 0;
 let currentSpecialBucket = 0;
 let spawnedThisBucket = { object3: false, object7: false };
 
+// pause UI
+let pauseText = "";
+let pauseUntil = 0;
+
 // =====================
 //  SCREENS HELPERS
 // =====================
@@ -258,18 +269,13 @@ function showHome() {
   hide(screenSave);
 }
 
-function showGameReady(message = "") {
+function showGameReady() {
   canvas.style.display = "block";
   hud.style.display = "block";
   hide(screenHome);
   show(screenReady);
   hide(screenGameOver);
   hide(screenSave);
-
-  // petit texte optionnel (dans le <p> du ready)
-  const p = screenReady.querySelector("p");
-  if (p && message) p.textContent = message;
-  if (p && !message) p.textContent = "Tape pour commencer";
 }
 
 function showGameOver() {
@@ -287,22 +293,28 @@ function showSaveForm() {
 }
 
 // =====================
-//  GAME RESET MODES
+//  RESET
 // =====================
+function clearDynamic() {
+  items.length = 0;
+  pops.length = 0;
+  dragging = false;
+  paused = false;
+  pauseText = "";
+  pauseUntil = 0;
+}
+
 function resetAllHard() {
   running = false;
-  paused = false;
   lastTs = 0;
 
   score = 0;
   lives = START_LIVES;
   misses = 0;
 
-  items = [];
-  pops = [];
-
   currentSpecialBucket = 0;
-  spawnedThisBucket = { object3: false, object7: false };
+  spawnedThisBucket.object3 = false;
+  spawnedThisBucket.object7 = false;
 
   player.w = 200;
   player.h = 140;
@@ -310,28 +322,17 @@ function resetAllHard() {
   elScore.textContent = String(score);
   elLives.textContent = String(lives);
   elMisses.textContent = String(misses);
+
+  clearDynamic();
 }
 
 function resetRoundToReady() {
-  running = false;
-  paused = false;
-  lastTs = 0;
-
-  score = 0;
-  lives = START_LIVES;
-  misses = 0;
-
-  items = [];
-  pops = [];
-
-  currentSpecialBucket = 0;
-  spawnedThisBucket = { object3: false, object7: false };
-
-  elScore.textContent = String(score);
-  elLives.textContent = String(lives);
-  elMisses.textContent = String(misses);
+  resetAllHard();
 }
 
+// =====================
+//  START ROUND
+// =====================
 function startRound() {
   ensureAudio();
   hide(screenReady);
@@ -339,13 +340,9 @@ function startRound() {
   hide(screenSave);
 
   running = true;
-  paused = false;
   lastTs = 0;
 
-  items = [];
-  pops = [];
-  dragging = false;
-
+  clearDynamic();
   requestAnimationFrame(step);
 }
 
@@ -380,8 +377,6 @@ function pickObjectSrc() {
 //  SPAWN / COLLISION
 // =====================
 function spawn() {
-  if (!canvas._w || !canvas._h) return; // sécurité
-
   const maxOn = maxOnScreenForScore(score);
   if (items.length >= maxOn) return;
 
@@ -426,26 +421,16 @@ function addPop(text) {
   pops.push({ x: player.x, y: player.y - player.h / 2 + 20, t: 0, text });
 }
 
-function pauseAfterLifeLost() {
-  // message dynamique
-  const left = lives;
-  const msg = `1 vie perdue — reste ${left} ${left <= 1 ? "vie" : "vies"}`;
+// Pause après perte de vie, sans reset score
+function pauseAfterLifeLost(reasonText, nowTs) {
   paused = true;
   dragging = false;
-  items = [];
-
-  // on affiche un overlay (sans reset score)
-  showGameReady(msg);
-
-  // reprise auto: on ferme l'overlay et on repart
-  setTimeout(() => {
-    if (!running) return;
-    hide(screenReady);
-    paused = false;
-  }, LIFE_PAUSE_MS);
+  items.length = 0; // IMPORTANT: pas de items = []
+  pauseText = reasonText;
+  pauseUntil = nowTs + LIFE_PAUSE_MS;
 }
 
-function applyEffects(src) {
+function applyEffects(src, nowTs) {
   const fx = EFFECTS[src];
 
   let deltaScore = 10;
@@ -474,25 +459,34 @@ function applyEffects(src) {
   // Perte vie directe (object3)
   if (deltaLife < 0) {
     if (lives <= 0) endGame();
-    else pauseAfterLifeLost();
+    else pauseAfterLifeLost(`1 vie perdue — il te reste ${lives} ${livesLabel(lives)}`, nowTs);
+    return true; // signal: stop processing this frame
   }
+  return false;
 }
 
-function loseLifeFromMisses() {
+function loseLifeFromMisses(nowTs) {
   lives = clamp(lives - 1, 0, 9);
   elLives.textContent = String(lives);
 
   misses = 0;
   elMisses.textContent = String(misses);
 
-  if (lives <= 0) endGame();
-  else pauseAfterLifeLost();
+  if (lives <= 0) {
+    endGame();
+    return true;
+  }
+
+  pauseAfterLifeLost(`1 vie perdue — il te reste ${lives} ${livesLabel(lives)}`, nowTs);
+  return true;
 }
 
 function endGame() {
   running = false;
   paused = false;
   dragging = false;
+  pauseText = "";
+  pauseUntil = 0;
   sfx("gameover");
   showGameOver();
 }
@@ -551,12 +545,31 @@ function drawPops() {
   }
 }
 
+function drawPauseOverlay() {
+  if (!paused || !pauseText) return;
+
+  ctx.save();
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.fillRect(0, 0, canvas._w, canvas._h);
+
+  ctx.fillStyle = "#111";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = "600 28px system-ui";
+  ctx.fillText("1 vie perdue", canvas._w / 2, canvas._h / 2 - 18);
+
+  ctx.font = "16px system-ui";
+  ctx.fillText(pauseText.replace("1 vie perdue — ", ""), canvas._w / 2, canvas._h / 2 + 18);
+  ctx.restore();
+}
+
 function draw() {
   if (!canvas._w || !canvas._h) return;
   drawBackground();
   for (const it of items) drawItem(it);
   drawBag();
   drawPops();
+  drawPauseOverlay();
 }
 
 // =====================
@@ -573,7 +586,7 @@ function resizeCanvas() {
   canvas.width = Math.round(cssW * dpr);
   canvas.height = Math.round(cssH * dpr);
 
-  // on dessine en "CSS pixels"
+  // on dessine en CSS pixels
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   canvas._w = cssW;
@@ -591,7 +604,18 @@ window.addEventListener("resize", resizeCanvas);
 function step(ts) {
   if (!running) { draw(); return; }
   if (!assetsReady) { requestAnimationFrame(step); return; }
-  if (paused) { draw(); requestAnimationFrame(step); return; }
+
+  // auto reprise pause
+  if (paused) {
+    if (pauseUntil && ts >= pauseUntil) {
+      paused = false;
+      pauseText = "";
+      pauseUntil = 0;
+    }
+    draw();
+    requestAnimationFrame(step);
+    return;
+  }
 
   if (!lastTs) lastTs = ts;
   const dt = Math.min(0.033, (ts - lastTs) / 1000);
@@ -600,23 +624,28 @@ function step(ts) {
   const diff = currentDifficulty(score);
   if (Math.random() < diff.spawnChance) spawn();
 
+  // mouvement sliceur
   if (dragging) {
     if (INPUT_SMOOTHING === 0) player.x = targetXInstant;
     else player.x += (targetXInstant - player.x) * INPUT_SMOOTHING;
   }
-
   // sac centre clamp [0..W] => sort à 50%
   player.x = clamp(player.x, 0, canvas._w);
 
+  // update items
   for (let i = items.length - 1; i >= 0; i--) {
     const it = items[i];
+    if (!it) { items.splice(i, 1); continue; } // safety
+
     it.y += it.vy * dt;
     it.ang += it.rot * dt;
 
     if (collideWithBagOpening(it)) {
-      applyEffects(it.src);
+      const stopFrame = applyEffects(it.src, ts);
       items.splice(i, 1);
-      if (!running) break;
+
+      // si perte de vie => on stop cette frame (sinon items peut bouger encore)
+      if (!running || paused || stopFrame) break;
       continue;
     }
 
@@ -630,8 +659,8 @@ function step(ts) {
         sfx("miss");
 
         if (misses >= MAX_MISSES) {
-          loseLifeFromMisses();
-          break;
+          const stopFrame = loseLifeFromMisses(ts);
+          if (!running || paused || stopFrame) break;
         }
       }
     }
@@ -698,7 +727,7 @@ btnReplay.onclick = () => {
   resizeCanvas();
   hide(screenGameOver);
   hide(screenSave);
-  showGameReady();
+  show(screenReady);
 };
 
 btnGoSave.onclick = () => {
