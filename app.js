@@ -372,7 +372,7 @@ function pickObjectSrc() {
   const pool = ASSET_OBJECTS.filter(src => src !== "assets/object3.png" && src !== "assets/object7.png");
 
   const roll = Math.random();
-  if (allow3 && roll < 0.03) return "assets/object3.png";
+  if (allow13 && roll < 0.03) return "assets/object13.png";
   if (allow7 && roll >= 0.03 && roll < 0.06) return "assets/object7.png";
 
   return pool[Math.floor(Math.random() * pool.length)];
@@ -817,5 +817,6 @@ submitForm.onsubmit = async (e) => {
 
   draw();
 })();
+
 
 
