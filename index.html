@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#ffffff" />
+  <title>ATOL — Le Jeu</title>
+
+  <!-- Evite le 404 favicon.ico -->
+  <link rel="icon" href="assets/glasses.png" />
+
+  <style>
+    :root{ --txt:#111; --muted:#666; --card:#fff; --border:#e6e6e6; }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:system-ui;background:#fff;color:var(--txt);}
+
+    /* Canvas pleine page */
+    #game{
+      position:fixed; inset:0;
+      width:100vw; height:100vh;
+      display:none;            /* caché sur l'accueil */
+      background:#fff;
+      touch-action:none;
+    }
+
+    /* Overlays */
+    .screen{
+      position:fixed; inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+      background:#fff;
+    }
+    .screen.hidden{display:none}
+
+    .card{
+      width:min(520px, 100%);
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:18px;
+      text-align:center;
+    }
+    .logo{
+      width:180px; height:180px;
+      object-fit:contain;
+      margin:6px auto 10px;
+      display:block;
+    }
+    h1{margin:6px 0 2px; font-size:26px}
+    p{margin:0 0 14px; color:var(--muted); font-size:14px}
+    .btns{display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:12px}
+    button,input{
+      font:inherit;
+      border-radius:12px;
+      border:1px solid var(--border);
+      padding:12px 14px;
+      background:#fff;
+    }
+    button{cursor:pointer}
+    button.primary{background:#111;color:#fff;border-color:#111}
+    button.wide{min-width:180px}
+
+    /* HUD en haut pendant le jeu */
+    #hud{
+      position:fixed; left:0; right:0; top:0;
+      display:none;
+      padding:10px 12px;
+      background:rgba(255,255,255,0.85);
+      backdrop-filter: blur(6px);
+      border-bottom:1px solid var(--border);
+      font-size:14px;
+    }
+    #hud .row{max-width:900px;margin:0 auto;display:flex;justify-content:space-between;gap:10px}
+    #hud b{font-variant-numeric:tabular-nums}
+
+    /* Form */
+    form{display:flex;flex-direction:column;gap:10px;text-align:left;margin-top:14px}
+    label{font-size:13px;color:var(--muted)}
+    input[type="text"],input[type="email"],input[type="tel"]{width:100%}
+    .consent{display:flex;gap:10px;align-items:flex-start;color:var(--txt)}
+    .consent span{font-size:13px;color:var(--muted);line-height:1.3}
+    .msg{margin-top:10px;color:var(--muted);font-size:13px;text-align:center}
+
+    /* Leaderboard (optionnel) */
+    #leaderWrap{display:none}
+  </style>
+</head>
+
+<body>
+
+  <!-- CANVAS PLEIN ÉCRAN -->
+  <canvas id="game" width="360" height="520"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="row">
+      <div>Score: <b id="score">0</b></div>
+      <div>Vies: <b id="lives">3</b></div>
+      <div>Ratés: <b id="misses">0</b></div>
+    </div>
+  </div>
+
+  <!-- ACCUEIL -->
+  <div id="screenHome" class="screen">
+    <div class="card">
+      <img class="logo" src="assets/glasses.png" alt="ATOL" />
+      <h1>ATOL — Le Jeu</h1>
+      <p>Attrape les objets dans le sac. Évite les pièges.</p>
+      <div class="btns">
+        <button id="btnPlay" type="button" class="primary wide">Jouer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ÉCRAN "TAP POUR COMMENCER" AU DESSUS DU JEU -->
+  <div id="screenReady" class="screen hidden" style="background:rgba(255,255,255,0.85);">
+    <div class="card">
+      <h1>Prêt ?</h1>
+      <p>Tape pour commencer</p>
+      <div class="btns">
+        <button id="btnStartRound" type="button" class="primary wide">Commencer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GAME OVER -->
+  <div id="screenGameOver" class="screen hidden" style="background:rgba(255,255,255,0.92);">
+    <div class="card">
+      <h1>Game Over</h1>
+      <p>Ton score : <b id="finalScore">0</b></p>
+      <div class="btns">
+        <button id="btnReplay" type="button" class="wide">Rejouer</button>
+        <button id="btnGoSave" type="button" class="primary wide">Enregistrer mon score</button>
+      </div>
+      <div class="msg" id="goMsg"></div>
+    </div>
+  </div>
+
+  <!-- FORMULAIRE -->
+  <div id="screenSave" class="screen hidden" style="background:rgba(255,255,255,0.92);">
+    <div class="card">
+      <h1>Enregistrer mon score</h1>
+      <p>Score : <b id="saveScore">0</b></p>
+
+      <form id="submitForm" novalidate>
+        <div>
+          <label for="firstName">Prénom</label>
+          <input id="firstName" type="text" required />
+        </div>
+        <div>
+          <label for="lastName">Nom</label>
+          <input id="lastName" type="text" required />
+        </div>
+        <div>
+          <label for="email">Email</label>
+          <input id="email" type="email" required />
+        </div>
+        <div>
+          <label for="phone">Téléphone (facultatif)</label>
+          <input id="phone" type="tel" />
+        </div>
+
+        <label class="consent">
+          <input id="consent" type="checkbox" />
+          <span>J’accepte de recevoir des communications commerciales</span>
+        </label>
+
+        <div class="btns" style="margin-top:6px">
+          <button id="btnBackToOver" type="button" class="wide">Retour</button>
+          <button type="submit" class="primary wide">Valider</button>
+        </div>
+
+        <div class="msg" id="saveMsg"></div>
+      </form>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
