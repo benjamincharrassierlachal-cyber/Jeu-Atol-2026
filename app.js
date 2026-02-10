@@ -911,15 +911,14 @@ submitForm.onsubmit = async (e) => {
     await submitScore(row);
     saveMsg.textContent = "Score enregistré ✅";
 
-    // bascule vers la page Top 20 et charge les scores
     hide(screenSave);
-    show(screenLeaderboard);
-    await showLeaderboard(); // <-- IMPORTANT
+    await showLeaderboard();
 
   } catch (err) {
     saveMsg.textContent = "Erreur : " + err.message;
   }
 };
+
 
 async function loadLeaderboard() {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/scores?select=first_name,last_name,score&order=score.desc&limit=20`, {
@@ -979,6 +978,7 @@ async function showLeaderboard() {
 
   draw();
 })();
+
 
 
 
