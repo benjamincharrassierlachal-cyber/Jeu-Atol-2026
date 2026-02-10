@@ -830,6 +830,11 @@ btnBackToOver.onclick = () => {
   showGameOver();
 };
 
+document.getElementById("btnCloseLeaderboard").onclick = () => {
+  showGameOver();
+};
+
+
 // =====================
 //  SUPABASE: submit score
 // =====================
@@ -864,11 +869,30 @@ submitForm.onsubmit = async (e) => {
   try {
     await submitScore(row);
     saveMsg.textContent = "Score enregistré ✅";
+    loadLeaderboard();
   } catch (err) {
     saveMsg.textContent = "Erreur : " + err.message;
   }
 };
 
+async function loadLeaderboard() {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/scores?select=first_name,last_name,score&order=score.desc&limit=20`, {
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`
+    }
+  });
+
+  const rows = await res.json();
+
+  const box = document.getElementById("leaderboard");
+  box.innerHTML = "";
+
+  rows.forEach((r, i) => {
+    const initial = r.last_name ? r.last_name[0].toUpperCase() + "." : "";
+    box.innerHTML += `<div>${i+1}. ${r.first_name} ${initial} — ${r.score}</div>`;
+  });
+}
 
 // =====================
 //  INIT
@@ -889,4 +913,5 @@ submitForm.onsubmit = async (e) => {
 
   draw();
 })();
+
 
