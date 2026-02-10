@@ -278,8 +278,20 @@ function showHome() {
 function showBrief() {
   briefMaxMisses.textContent = String(MAX_MISSES);
 
+  running = false;
+  paused = false;
+
   canvas.style.display = "none";
   hud.style.display = "none";
+
+  hide(screenHome);
+  hide(screenReady);
+  hide(screenOptions);
+  hide(screenGameOver);
+  hide(screenSave);
+
+  show(screenBrief);
+}
 
   hideAllScreens();
   show(screenBrief);
@@ -782,12 +794,23 @@ btnStartRound.onclick = () => {
 
 btnOptions.onclick = () => {
   if (!running) return;
-  showOptions();
+  paused = true;
+  dragging = false;
+
+  hide(screenHome);
+  hide(screenBrief);
+  hide(screenReady);
+  hide(screenGameOver);
+  hide(screenSave);
+
+  show(screenOptions);
 };
 
 btnOptResume.onclick = () => {
-  closeOptionsBackToGame();
+  hide(screenOptions);
+  paused = false;
 };
+
 
 btnOptRestart.onclick = () => {
   resetRoundToReady();
@@ -870,3 +893,4 @@ submitForm.onsubmit = async (e) => {
 
   draw();
 })();
+
