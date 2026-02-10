@@ -34,6 +34,10 @@ const screenReady = must("screenReady", document.getElementById("screenReady"));
 const screenOptions = must("screenOptions", document.getElementById("screenOptions"));
 const screenGameOver = must("screenGameOver", document.getElementById("screenGameOver"));
 const screenSave = must("screenSave", document.getElementById("screenSave"));
+const screenLeaderboard = must("screenLeaderboard", document.getElementById("screenLeaderboard"));
+const leaderboardDiv = must("leaderboard", document.getElementById("leaderboard"));
+const btnCloseLeaderboard = must("btnCloseLeaderboard", document.getElementById("btnCloseLeaderboard"));
+
 
 const btnPlay = must("btnPlay", document.getElementById("btnPlay"));
 const btnBriefOk = must("btnBriefOk", document.getElementById("btnBriefOk"));
@@ -867,12 +871,15 @@ submitForm.onsubmit = async (e) => {
   };
 
   try {
-    await submitScore(row);
-    saveMsg.textContent = "Score enregistré ✅";
-    loadLeaderboard();
-  } catch (err) {
-    saveMsg.textContent = "Erreur : " + err.message;
-  }
+  await submitScore(data);
+
+  hide(screenSave);
+  show(screenLeaderboard);
+  loadLeaderboard();
+
+} catch (err) {
+  saveMsg.textContent = "Erreur : " + err.message;
+}
 };
 
 async function loadLeaderboard() {
@@ -894,6 +901,26 @@ async function loadLeaderboard() {
   });
 }
 
+async function showLeaderboard() {
+  hide(screenSave);
+  show(screenLeaderboard);
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/scores?select=first_name,last_name,score&order=score.desc&limit=20`, {
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`
+    }
+  });
+
+  const rows = await res.json();
+
+  leaderboardDiv.innerHTML = rows.map((r, i) => {
+    const initial = r.last_name ? r.last_name[0].toUpperCase() + "." : "";
+    return `<div>${i+1}. ${r.first_name} ${initial} — <b>${r.score}</b></div>`;
+  }).join("");
+}
+
+
 // =====================
 //  INIT
 // =====================
@@ -913,5 +940,6 @@ async function loadLeaderboard() {
 
   draw();
 })();
+
 
 
