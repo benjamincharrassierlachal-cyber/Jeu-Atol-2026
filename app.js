@@ -525,7 +525,7 @@ function drawBag() {
 
 function drawItem(it) {
   // taille de référence (en CSS pixels)
-  const baseSize = Math.round(Math.min(canvas._w, canvas._h) * 0.09);
+  const baseSize = Math.round(Math.min(canvas._w, canvas._h) * 0.12);
 
   const img = it.sprite;
   const ratio = img.width / img.height;
@@ -817,6 +817,7 @@ submitForm.onsubmit = async (e) => {
 
   draw();
 })();
+
 
 
 
