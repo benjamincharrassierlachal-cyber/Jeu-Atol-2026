@@ -833,40 +833,42 @@ btnBackToOver.onclick = () => {
 // =====================
 //  SUPABASE: submit score
 // =====================
-async function submitScore(data) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/submit_score`, {
+async function submitScore(row) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/scores`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "apikey": SUPABASE_KEY,
-      "Authorization": `Bearer ${SUPABASE_KEY}`
+      "Authorization": `Bearer ${SUPABASE_KEY}`,
+      "Prefer": "return=minimal"
     },
-    body: JSON.stringify(data)
+    body: JSON.stringify(row)
   });
+
   if (!res.ok) throw new Error(await res.text());
 }
+
 
 submitForm.onsubmit = async (e) => {
   e.preventDefault();
   saveMsg.textContent = "";
 
-  const data = {
-    p_store_id: storeId,
-    p_first_name: document.getElementById("firstName").value.trim(),
-    p_last_name: document.getElementById("lastName").value.trim(),
-    p_email: document.getElementById("email").value.trim(),
-    p_phone: document.getElementById("phone").value.trim() || null,
-    p_consent_marketing: document.getElementById("consent").checked,
-    p_score: score
+  const row = {
+    first_name: document.getElementById("firstName").value.trim(),
+    last_name: document.getElementById("lastName").value.trim(),
+    email: document.getElementById("email").value.trim(),
+    phone: document.getElementById("phone").value.trim() || null,
+    score: score
   };
 
   try {
-    await submitScore(data);
+    await submitScore(row);
     saveMsg.textContent = "Score enregistré ✅";
   } catch (err) {
     saveMsg.textContent = "Erreur : " + err.message;
   }
 };
+
 
 // =====================
 //  INIT
@@ -887,3 +889,4 @@ submitForm.onsubmit = async (e) => {
 
   draw();
 })();
+
