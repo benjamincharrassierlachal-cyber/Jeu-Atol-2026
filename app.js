@@ -59,17 +59,17 @@ const briefMaxMisses = must("briefMaxMisses", document.getElementById("briefMaxM
 const optMaxMisses = must("optMaxMisses", document.getElementById("optMaxMisses"));
 
 // =====================
-//  ASSETS
+//  ASSETS (paths relatifs - GitHub Pages / Netlify)
 // =====================
 const ASSET_BAG = "assets/glasses.png";
 const ASSET_OBJECTS = Array.from({ length: 13 }, (_, i) => `assets/object${i + 1}.png`);
 
 // Mapping demandé (ton dernier message)
 const EFFECTS = {
-  "assets/object3.png":  { scoreDelta: -50, sfx: "malus"   }, // points -
-  "assets/object7.png":  { scoreDelta: +50, sfx: "bonus"   }, // points +
-  "assets/object12.png": { lifeDelta:  -1,  sfx: "lifeDown"}, // vie -
-  "assets/object13.png": { lifeDelta:  +1,  sfx: "lifeUp"  }  // vie +
+  "assets/object3.png":  { scoreDelta: -50, sfx: "malus"    }, // points -
+  "assets/object7.png":  { scoreDelta: +50, sfx: "bonus"    }, // points +
+  "assets/object12.png": { lifeDelta:  -1,  sfx: "lifeDown" }, // vie -
+  "assets/object13.png": { lifeDelta:  +1,  sfx: "lifeUp"   }  // vie +
 };
 
 // =====================
@@ -227,6 +227,9 @@ const player = { x: 0, y: 0, w: 200, h: 140 };
 const items = [];
 const pops = [];
 
+// >>> MODIF DEMANDÉE : tri stable anti-clignottement
+let nextItemId = 1;
+
 let running = false;
 let paused = false;
 let lastTs = 0;
@@ -288,7 +291,6 @@ function showBrief() {
   show(screenBrief);
 }
 
-
 function showGameReady() {
   canvas.style.display = "block";
   hud.style.display = "block";
@@ -299,9 +301,7 @@ function showGameReady() {
 
 function showOptions() {
   optMaxMisses.textContent = String(MAX_MISSES);
-
-  // on PAUSE le jeu pendant les options
-  paused = true;
+  paused = true; // pause le jeu pendant options
 
   hideAllScreens();
   show(screenOptions);
@@ -309,7 +309,6 @@ function showOptions() {
 
 function closeOptionsBackToGame() {
   hide(screenOptions);
-  // on ne montre pas d’écran ; le canvas/hud sont déjà visibles
   paused = false;
 }
 
@@ -335,10 +334,13 @@ function showSaveForm() {
 function clearDynamic() {
   items.length = 0;
   pops.length = 0;
+
   dragging = false;
   paused = false;
   pauseText = "";
   pauseUntil = 0;
+
+  nextItemId = 1;
 }
 
 function resetAllHard() {
@@ -400,13 +402,11 @@ function updateSpecialBucketIfNeeded() {
 function pickObjectSrc() {
   updateSpecialBucketIfNeeded();
 
-  // pool normal: on retire object13 pour qu'il ne puisse pas sortir "par hasard" via le pool
+  // pool normal: retirer object13 (sinon il peut sortir “par hasard”)
   const pool = ASSET_OBJECTS.filter(src => src !== "assets/object13.png");
 
-  // 1 apparition max / bucket
+  // 1 apparition max / bucket (tant qu'il n'est pas apparu)
   if (!spawnedThisBucket.object13) {
-    // proba d'apparition quand on spawn un item (à ajuster)
-    // 0.03 => ~3% des spawns tant que pas apparu dans la tranche
     if (Math.random() < 0.03) return "assets/object13.png";
   }
 
@@ -430,6 +430,7 @@ function spawn() {
   const r = 16;
 
   items.push({
+    id: nextItemId++, // <<< MODIF: id pour tri stable
     x: rand(r + 10, canvas._w - r - 10),
     y: -60,
     r,
@@ -617,9 +618,20 @@ function drawPauseOverlay() {
 
 function draw() {
   if (!canvas._w || !canvas._h) return;
+
   drawBackground();
-  for (const it of items) drawItem(it);
+
+  // >>> MODIF DEMANDÉE :
+  // Tri stable : le plus bas (y le plus grand) est dessiné EN DERNIER => "devant" les autres objets.
+  // Et (id) évite le clignotement quand y est proche/identique.
+  const sorted = items.slice().sort((a, b) => (a.y - b.y) || (a.id - b.id));
+
+  // Objets
+  for (const it of sorted) drawItem(it);
+
+  // Sac dessiné APRÈS => objets toujours derrière le sac (effet "ils tombent dedans")
   drawBag();
+
   drawPops();
   drawPauseOverlay();
 }
@@ -786,23 +798,13 @@ btnStartRound.onclick = () => {
 
 btnOptions.onclick = () => {
   if (!running) return;
-  paused = true;
-  dragging = false;
-
-  hide(screenHome);
-  hide(screenBrief);
-  hide(screenReady);
-  hide(screenGameOver);
-  hide(screenSave);
-
-  show(screenOptions);
+  if (paused) return; // évite d'ouvrir options pendant "1 vie perdue"
+  showOptions();
 };
 
 btnOptResume.onclick = () => {
-  hide(screenOptions);
-  paused = false;
+  closeOptionsBackToGame();
 };
-
 
 btnOptRestart.onclick = () => {
   resetRoundToReady();
@@ -885,5 +887,3 @@ submitForm.onsubmit = async (e) => {
 
   draw();
 })();
-
-
