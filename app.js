@@ -9,76 +9,67 @@ const params = new URLSearchParams(window.location.search);
 const storeId = params.get("store") || "magasin-1";
 
 // =====================
-//  DOM (Screens / UI)
+//  HELPERS (DOM safety)
 // =====================
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-
-const elLevel = document.getElementById("level");
-must("level", elLevel);
-
-const hud = document.getElementById("hud");
-const elScore = document.getElementById("score");
-const elLives = document.getElementById("lives");
-const elMisses = document.getElementById("misses");
-
-const screenHome = document.getElementById("screenHome");
-const screenReady = document.getElementById("screenReady");
-const screenGameOver = document.getElementById("screenGameOver");
-const screenSave = document.getElementById("screenSave");
-
-const btnPlay = document.getElementById("btnPlay");
-const btnStartRound = document.getElementById("btnStartRound");
-const btnReplay = document.getElementById("btnReplay");
-const btnGoSave = document.getElementById("btnGoSave");
-const btnBackToOver = document.getElementById("btnBackToOver");
-
-const finalScoreEl = document.getElementById("finalScore");
-const saveScoreEl = document.getElementById("saveScore");
-
-const goMsg = document.getElementById("goMsg");
-const saveMsg = document.getElementById("saveMsg");
-
-const submitForm = document.getElementById("submitForm");
-
-// Sécurité
 function must(id, el) {
   if (!el) throw new Error(`Élément HTML manquant: #${id}`);
   return el;
 }
-must("game", canvas);
-must("hud", hud);
-must("score", elScore);
-must("lives", elLives);
-must("misses", elMisses);
-must("screenHome", screenHome);
-must("screenReady", screenReady);
-must("screenGameOver", screenGameOver);
-must("screenSave", screenSave);
-must("btnPlay", btnPlay);
-must("btnStartRound", btnStartRound);
-must("btnReplay", btnReplay);
-must("btnGoSave", btnGoSave);
-must("btnBackToOver", btnBackToOver);
-must("finalScore", finalScoreEl);
-must("saveScore", saveScoreEl);
-must("goMsg", goMsg);
-must("saveMsg", saveMsg);
-must("submitForm", submitForm);
+
+// =====================
+//  DOM
+// =====================
+const canvas = must("game", document.getElementById("game"));
+const ctx = canvas.getContext("2d");
+
+const hud = must("hud", document.getElementById("hud"));
+const elScore = must("score", document.getElementById("score"));
+const elLives = must("lives", document.getElementById("lives"));
+const elMisses = must("misses", document.getElementById("misses"));
+const elLevel = must("level", document.getElementById("level"));
+
+const screenHome = must("screenHome", document.getElementById("screenHome"));
+const screenBrief = must("screenBrief", document.getElementById("screenBrief"));
+const screenReady = must("screenReady", document.getElementById("screenReady"));
+const screenOptions = must("screenOptions", document.getElementById("screenOptions"));
+const screenGameOver = must("screenGameOver", document.getElementById("screenGameOver"));
+const screenSave = must("screenSave", document.getElementById("screenSave"));
+
+const btnPlay = must("btnPlay", document.getElementById("btnPlay"));
+const btnBriefOk = must("btnBriefOk", document.getElementById("btnBriefOk"));
+const btnStartRound = must("btnStartRound", document.getElementById("btnStartRound"));
+
+const btnOptions = must("btnOptions", document.getElementById("btnOptions"));
+const btnOptResume = must("btnOptResume", document.getElementById("btnOptResume"));
+const btnOptRestart = must("btnOptRestart", document.getElementById("btnOptRestart"));
+const btnOptQuit = must("btnOptQuit", document.getElementById("btnOptQuit"));
+
+const btnReplay = must("btnReplay", document.getElementById("btnReplay"));
+const btnGoSave = must("btnGoSave", document.getElementById("btnGoSave"));
+const btnBackToOver = must("btnBackToOver", document.getElementById("btnBackToOver"));
+
+const finalScoreEl = must("finalScore", document.getElementById("finalScore"));
+const saveScoreEl = must("saveScore", document.getElementById("saveScore"));
+const goMsg = must("goMsg", document.getElementById("goMsg"));
+const saveMsg = must("saveMsg", document.getElementById("saveMsg"));
+
+const submitForm = must("submitForm", document.getElementById("submitForm"));
+
+const briefMaxMisses = must("briefMaxMisses", document.getElementById("briefMaxMisses"));
+const optMaxMisses = must("optMaxMisses", document.getElementById("optMaxMisses"));
 
 // =====================
 //  ASSETS
 // =====================
-// IMPORTANT: chemins relatifs (GitHub Pages / Netlify)
-// => PAS de "/" devant
 const ASSET_BAG = "assets/glasses.png";
 const ASSET_OBJECTS = Array.from({ length: 13 }, (_, i) => `assets/object${i + 1}.png`);
 
+// Mapping demandé (ton dernier message)
 const EFFECTS = {
-  "assets/object3.png": { scoreDelta: -50, sfx: "malus" },
-  "assets/object7.png": { scoreDelta: +50, sfx: "bonus" },
-  "assets/object12.png":  { lifeDelta: -1,  sfx: "lifeDown" },
-  "assets/object13.png":  { lifeDelta: +1,  sfx: "lifeUp" }
+  "assets/object3.png":  { scoreDelta: -50, sfx: "malus"   }, // points -
+  "assets/object7.png":  { scoreDelta: +50, sfx: "bonus"   }, // points +
+  "assets/object12.png": { lifeDelta:  -1,  sfx: "lifeDown"}, // vie -
+  "assets/object13.png": { lifeDelta:  +1,  sfx: "lifeUp"  }  // vie +
 };
 
 // =====================
@@ -102,7 +93,7 @@ const BASE = {
   rotMax: 1.4
 };
 
-// Rareté object13/object7 : max 1 de chaque / 500 points
+// object13 rareté : max 1 / 500 points
 const SPECIAL_BUCKET_POINTS = 500;
 
 // sac: peut sortir à 50% => centre clamp [0..W]
@@ -232,7 +223,7 @@ async function loadSprites() {
 // =====================
 const player = { x: 0, y: 0, w: 200, h: 140 };
 
-// IMPORTANT: on garde TOUJOURS la même référence (pas de items = [])
+// IMPORTANT: garder la même référence (pas de items = [])
 const items = [];
 const pops = [];
 
@@ -249,11 +240,11 @@ let dragging = false;
 let grabOffsetX = 0;
 let targetXInstant = 0;
 
-// bucket spéciaux
+// bucket spéciaux (object13)
 let currentSpecialBucket = 0;
-let spawnedThisBucket = { object13: false, object7: false };
+let spawnedThisBucket = { object13: false };
 
-// pause UI
+// pause UI interne
 let pauseText = "";
 let pauseUntil = 0;
 
@@ -263,35 +254,74 @@ let pauseUntil = 0;
 function show(el) { el.classList.remove("hidden"); }
 function hide(el) { el.classList.add("hidden"); }
 
-function showHome() {
-  canvas.style.display = "none";
-  hud.style.display = "none";
-  show(screenHome);
+function hideAllScreens() {
+  hide(screenHome);
+  hide(screenBrief);
   hide(screenReady);
+  hide(screenOptions);
   hide(screenGameOver);
   hide(screenSave);
+}
+
+function showHome() {
+  running = false;
+  paused = false;
+  dragging = false;
+
+  canvas.style.display = "none";
+  hud.style.display = "none";
+
+  hideAllScreens();
+  show(screenHome);
+}
+
+function showBrief() {
+  briefMaxMisses.textContent = String(MAX_MISSES);
+
+  canvas.style.display = "none";
+  hud.style.display = "none";
+
+  hideAllScreens();
+  show(screenBrief);
 }
 
 function showGameReady() {
   canvas.style.display = "block";
   hud.style.display = "block";
-  hide(screenHome);
+
+  hideAllScreens();
   show(screenReady);
-  hide(screenGameOver);
-  hide(screenSave);
+}
+
+function showOptions() {
+  optMaxMisses.textContent = String(MAX_MISSES);
+
+  // on PAUSE le jeu pendant les options
+  paused = true;
+
+  hideAllScreens();
+  show(screenOptions);
+}
+
+function closeOptionsBackToGame() {
+  hide(screenOptions);
+  // on ne montre pas d’écran ; le canvas/hud sont déjà visibles
+  paused = false;
 }
 
 function showGameOver() {
   finalScoreEl.textContent = String(score);
   goMsg.textContent = "";
+
+  hideAllScreens();
   show(screenGameOver);
-  hide(screenSave);
 }
 
 function showSaveForm() {
   saveScoreEl.textContent = String(score);
   saveMsg.textContent = "";
-  hide(screenGameOver);
+
+  hideAllScreens();
   show(screenSave);
 }
 
@@ -317,7 +347,6 @@ function resetAllHard() {
 
   currentSpecialBucket = 0;
   spawnedThisBucket.object13 = false;
-  spawnedThisBucket.object7 = false;
 
   player.w = 200;
   player.h = 140;
@@ -325,7 +354,6 @@ function resetAllHard() {
   elScore.textContent = String(score);
   elLives.textContent = String(lives);
   elMisses.textContent = String(misses);
-
   elLevel.textContent = "1";
 
   clearDynamic();
@@ -340,9 +368,12 @@ function resetRoundToReady() {
 // =====================
 function startRound() {
   ensureAudio();
+
   hide(screenReady);
   hide(screenGameOver);
   hide(screenSave);
+  hide(screenOptions);
+  hide(screenBrief);
 
   running = true;
   lastTs = 0;
@@ -352,28 +383,28 @@ function startRound() {
 }
 
 // =====================
-//  SPECIAL BUCKET
+//  SPECIAL BUCKET (object13 max 1 / 500 pts)
 // =====================
 function updateSpecialBucketIfNeeded() {
   const bucket = Math.floor(score / SPECIAL_BUCKET_POINTS);
   if (bucket !== currentSpecialBucket) {
     currentSpecialBucket = bucket;
     spawnedThisBucket.object13 = false;
-    spawnedThisBucket.object7 = false;
   }
 }
 
 function pickObjectSrc() {
   updateSpecialBucketIfNeeded();
 
-  const allow13 = !spawnedThisBucket.object13;
-  const allow7 = !spawnedThisBucket.object7;
+  // pool normal: on retire object13 pour qu'il ne puisse pas sortir "par hasard" via le pool
+  const pool = ASSET_OBJECTS.filter(src => src !== "assets/object13.png");
 
-  const pool = ASSET_OBJECTS.filter(src => src !== "assets/object13.png" && src !== "assets/object7.png");
-
-  const roll = Math.random();
-  if (allow13 && roll < 0.03) return "assets/object13.png";
-  if (allow7 && roll >= 0.03 && roll < 0.06) return "assets/object7.png";
+  // 1 apparition max / bucket
+  if (!spawnedThisBucket.object13) {
+    // proba d'apparition quand on spawn un item (à ajuster)
+    // 0.03 => ~3% des spawns tant que pas apparu dans la tranche
+    if (Math.random() < 0.03) return "assets/object13.png";
+  }
 
   return pool[Math.floor(Math.random() * pool.length)];
 }
@@ -390,7 +421,6 @@ function spawn() {
   if (!sprite) return;
 
   if (src === "assets/object13.png") spawnedThisBucket.object13 = true;
-  if (src === "assets/object7.png") spawnedThisBucket.object7 = true;
 
   const { speedMin, speedMax } = currentDifficulty(score);
   const r = 16;
@@ -426,11 +456,10 @@ function addPop(text) {
   pops.push({ x: player.x, y: player.y - player.h / 2 + 20, t: 0, text });
 }
 
-// Pause après perte de vie, sans reset score
 function pauseAfterLifeLost(reasonText, nowTs) {
   paused = true;
   dragging = false;
-  items.length = 0; // IMPORTANT: pas de items = []
+  items.length = 0;
   pauseText = reasonText;
   pauseUntil = nowTs + LIFE_PAUSE_MS;
 }
@@ -438,7 +467,7 @@ function pauseAfterLifeLost(reasonText, nowTs) {
 function applyEffects(src, nowTs) {
   const fx = EFFECTS[src];
 
-  let deltaScore = 10;
+  let deltaScore = 10; // default
   let deltaLife = 0;
   let sound = "catch";
 
@@ -448,24 +477,23 @@ function applyEffects(src, nowTs) {
   score = Math.max(0, score + deltaScore);
   lives = clamp(lives + deltaLife, 0, 9);
 
-  updateSpecialBucketIfNeeded();
-
   elScore.textContent = String(score);
   elLives.textContent = String(lives);
 
-  if (src === "assets/object12.png") addPop("-50");
-  else if (src === "assets/object13.png") addPop("+50");
-  else if (src === "assets/object3.png") addPop("-1 vie");
-  else if (src === "assets/object7.png") addPop("+1 vie");
+  // pop text
+  if (src === "assets/object3.png") addPop("-50");
+  else if (src === "assets/object7.png") addPop("+50");
+  else if (src === "assets/object12.png") addPop("-1 vie");
+  else if (src === "assets/object13.png") addPop("+1 vie");
   else addPop("+10");
 
   sfx(sound);
 
-  // Perte vie directe (object13)
+  // perte de vie directe
   if (deltaLife < 0) {
     if (lives <= 0) endGame();
     else pauseAfterLifeLost(`1 vie perdue — il te reste ${lives} ${livesLabel(lives)}`, nowTs);
-    return true; // signal: stop processing this frame
+    return true;
   }
   return false;
 }
@@ -492,6 +520,7 @@ function endGame() {
   dragging = false;
   pauseText = "";
   pauseUntil = 0;
+
   sfx("gameover");
   showGameOver();
 }
@@ -523,21 +552,18 @@ function drawBag() {
   ctx.restore();
 }
 
+// Respect ratio (pas écrasé)
 function drawItem(it) {
-  // taille de référence (en CSS pixels)
-  const baseSize = Math.round(Math.min(canvas._w, canvas._h) * 0.12);
+  const baseSize = Math.round(Math.min(canvas._w, canvas._h) * 0.09);
 
   const img = it.sprite;
   const ratio = img.width / img.height;
 
   let w, h;
-
   if (ratio >= 1) {
-    // image large (lunettes)
     w = baseSize;
     h = baseSize / ratio;
   } else {
-    // image haute (spray, bouteille)
     h = baseSize;
     w = baseSize * ratio;
   }
@@ -548,7 +574,6 @@ function drawItem(it) {
   ctx.drawImage(img, -w / 2, -h / 2, w, h);
   ctx.restore();
 }
-
 
 function drawPops() {
   for (let i = pops.length - 1; i >= 0; i--) {
@@ -609,7 +634,7 @@ function resizeCanvas() {
   canvas.width = Math.round(cssW * dpr);
   canvas.height = Math.round(cssH * dpr);
 
-  // on dessine en CSS pixels
+  // dessin en CSS pixels
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   canvas._w = cssW;
@@ -628,7 +653,7 @@ function step(ts) {
   if (!running) { draw(); return; }
   if (!assetsReady) { requestAnimationFrame(step); return; }
 
-  // auto reprise pause
+  // pause auto (perte de vie)
   if (paused) {
     if (pauseUntil && ts >= pauseUntil) {
       paused = false;
@@ -645,23 +670,26 @@ function step(ts) {
   lastTs = ts;
 
   const diff = currentDifficulty(score);
-  if (Math.random() < diff.spawnChance) spawn();
 
-  // update level (discret)
-elLevel.textContent = String(diff.lvl + 1);
+  // display level
+  elLevel.textContent = String(diff.lvl + 1);
+
+  // spawn
+  if (Math.random() < diff.spawnChance) spawn();
 
   // mouvement sliceur
   if (dragging) {
     if (INPUT_SMOOTHING === 0) player.x = targetXInstant;
     else player.x += (targetXInstant - player.x) * INPUT_SMOOTHING;
   }
+
   // sac centre clamp [0..W] => sort à 50%
   player.x = clamp(player.x, 0, canvas._w);
 
   // update items
   for (let i = items.length - 1; i >= 0; i--) {
     const it = items[i];
-    if (!it) { items.splice(i, 1); continue; } // safety
+    if (!it) { items.splice(i, 1); continue; }
 
     it.y += it.vy * dt;
     it.ang += it.rot * dt;
@@ -669,12 +697,11 @@ elLevel.textContent = String(diff.lvl + 1);
     if (collideWithBagOpening(it)) {
       const stopFrame = applyEffects(it.src, ts);
       items.splice(i, 1);
-
-      // si perte de vie => on stop cette frame (sinon items peut bouger encore)
       if (!running || paused || stopFrame) break;
       continue;
     }
 
+    // raté (sort en bas)
     if (it.y > canvas._h + 80) {
       const src = it.src;
       items.splice(i, 1);
@@ -684,6 +711,7 @@ elLevel.textContent = String(diff.lvl + 1);
         elMisses.textContent = String(misses);
         sfx("miss");
 
+        // règle : à MAX_MISSES => -1 vie, ratés reset, score inchangé
         if (misses >= MAX_MISSES) {
           const stopFrame = loseLifeFromMisses(ts);
           if (!running || paused || stopFrame) break;
@@ -740,6 +768,10 @@ canvas.addEventListener("pointercancel", () => { dragging = false; });
 btnPlay.onclick = () => {
   ensureAudio();
   resetAllHard();
+  showBrief();
+};
+
+btnBriefOk.onclick = () => {
   resizeCanvas();
   showGameReady();
 };
@@ -748,12 +780,29 @@ btnStartRound.onclick = () => {
   startRound();
 };
 
+btnOptions.onclick = () => {
+  if (!running) return;
+  showOptions();
+};
+
+btnOptResume.onclick = () => {
+  closeOptionsBackToGame();
+};
+
+btnOptRestart.onclick = () => {
+  resetRoundToReady();
+  resizeCanvas();
+  showGameReady();
+};
+
+btnOptQuit.onclick = () => {
+  showHome();
+};
+
 btnReplay.onclick = () => {
   resetRoundToReady();
   resizeCanvas();
-  hide(screenGameOver);
-  hide(screenSave);
-  show(screenReady);
+  showGameReady();
 };
 
 btnGoSave.onclick = () => {
@@ -806,6 +855,10 @@ submitForm.onsubmit = async (e) => {
 //  INIT
 // =====================
 (async function init() {
+  // affiche les valeurs de règle
+  briefMaxMisses.textContent = String(MAX_MISSES);
+  optMaxMisses.textContent = String(MAX_MISSES);
+
   showHome();
   resizeCanvas();
 
@@ -817,8 +870,3 @@ submitForm.onsubmit = async (e) => {
 
   draw();
 })();
-
-
-
-
-
