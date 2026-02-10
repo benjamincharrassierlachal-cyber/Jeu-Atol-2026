@@ -284,18 +284,10 @@ function showBrief() {
   canvas.style.display = "none";
   hud.style.display = "none";
 
-  hide(screenHome);
-  hide(screenReady);
-  hide(screenOptions);
-  hide(screenGameOver);
-  hide(screenSave);
-
-  show(screenBrief);
-}
-
   hideAllScreens();
   show(screenBrief);
 }
+
 
 function showGameReady() {
   canvas.style.display = "block";
@@ -893,4 +885,5 @@ submitForm.onsubmit = async (e) => {
 
   draw();
 })();
+
 
