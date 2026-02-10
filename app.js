@@ -268,6 +268,8 @@ function hideAllScreens() {
   hide(screenOptions);
   hide(screenGameOver);
   hide(screenSave);
+  hide(screenLeaderboard);
+
 }
 
 function showHome() {
@@ -290,9 +292,6 @@ function showBrief() {
 
   canvas.style.display = "none";
   hud.style.display = "none";
-
-  hideAllScreens();
-  show(screenBrief);
 }
 
 function showGameReady() {
@@ -330,6 +329,43 @@ function showSaveForm() {
 
   hideAllScreens();
   show(screenSave);
+}
+async function showLeaderboard() {
+  hideAllScreens();
+  show(screenLeaderboard);
+
+  leaderboardDiv.innerHTML = "Chargement…";
+
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/scores?select=first_name,last_name,score&order=score.desc&limit=20`,
+    {
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`
+      }
+    }
+  );
+
+  if (!res.ok) {
+    leaderboardDiv.innerHTML = "Erreur chargement Top 20 : " + (await res.text());
+    return;
+  }
+
+  const rows = await res.json();
+
+  leaderboardDiv.innerHTML = rows.map((r, i) => {
+    const first = (r.first_name || "").trim();
+    const initial = (r.last_name || "").trim().slice(0, 1).toUpperCase();
+    const name = `${first} ${initial ? initial + "." : ""}`.trim();
+    return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee">
+      <div>${i + 1}. ${name}</div>
+      <div><b>${r.score}</b></div>
+    </div>`;
+  }).join("");
+
+  if (!rows.length) {
+    leaderboardDiv.innerHTML = "<p>Aucun score pour le moment.</p>";
+  }
 }
 
 // =====================
@@ -834,9 +870,10 @@ btnBackToOver.onclick = () => {
   showGameOver();
 };
 
-document.getElementById("btnCloseLeaderboard").onclick = () => {
+btnCloseLeaderboard.onclick = () => {
   showGameOver();
 };
+
 
 
 // =====================
@@ -871,15 +908,17 @@ submitForm.onsubmit = async (e) => {
   };
 
   try {
-  await submitScore(data);
+    await submitScore(row);
+    saveMsg.textContent = "Score enregistré ✅";
 
-  hide(screenSave);
-  show(screenLeaderboard);
-  loadLeaderboard();
+    // bascule vers la page Top 20 et charge les scores
+    hide(screenSave);
+    show(screenLeaderboard);
+    await showLeaderboard(); // <-- IMPORTANT
 
-} catch (err) {
-  saveMsg.textContent = "Erreur : " + err.message;
-}
+  } catch (err) {
+    saveMsg.textContent = "Erreur : " + err.message;
+  }
 };
 
 async function loadLeaderboard() {
@@ -940,6 +979,7 @@ async function showLeaderboard() {
 
   draw();
 })();
+
 
 
 
