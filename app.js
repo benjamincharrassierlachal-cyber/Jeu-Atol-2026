@@ -292,7 +292,11 @@ function showBrief() {
 
   canvas.style.display = "none";
   hud.style.display = "none";
+
+  hideAllScreens();
+  show(screenBrief);
 }
+
 
 function showGameReady() {
   canvas.style.display = "block";
@@ -978,6 +982,7 @@ async function showLeaderboard() {
 
   draw();
 })();
+
 
 
 
