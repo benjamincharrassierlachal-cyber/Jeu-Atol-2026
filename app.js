@@ -943,24 +943,6 @@ async function loadLeaderboard() {
   });
 }
 
-async function showLeaderboard() {
-  hide(screenSave);
-  show(screenLeaderboard);
-
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/scores?select=first_name,last_name,score&order=score.desc&limit=20`, {
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`
-    }
-  });
-
-  const rows = await res.json();
-
-  leaderboardDiv.innerHTML = rows.map((r, i) => {
-    const initial = r.last_name ? r.last_name[0].toUpperCase() + "." : "";
-    return `<div>${i+1}. ${r.first_name} ${initial} — <b>${r.score}</b></div>`;
-  }).join("");
-}
 
 
 // =====================
@@ -982,6 +964,7 @@ async function showLeaderboard() {
 
   draw();
 })();
+
 
 
 
