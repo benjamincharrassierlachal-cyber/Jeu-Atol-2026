@@ -888,7 +888,7 @@ btnBackToOver.onclick = () => {
 };
 
 btnCloseLeaderboard.onclick = () => {
-  showGameOver();
+  showHome();
 };
 
 
@@ -987,6 +987,7 @@ async function loadLeaderboard() {
 
   draw();
 })();
+
 
 
 
