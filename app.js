@@ -884,15 +884,25 @@ btnCloseLeaderboard.onclick = () => {
 //  SUPABASE: submit score
 // =====================
 async function submitScore(row) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/scores`, {
+  // 1) construit la clé unique identique à celle en SQL
+  const player_key =
+    (row.first_name || "").trim().toLowerCase() +
+    "|" +
+    (row.last_name || "").trim().toLowerCase();
+
+  // 2) on envoie player_key + les champs
+  const payload = { ...row, player_key };
+
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/scores?on_conflict=player_key`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "apikey": SUPABASE_KEY,
       "Authorization": `Bearer ${SUPABASE_KEY}`,
-      "Prefer": "return=minimal"
+      // merge-duplicates => si player_key existe, ça UPDATE au lieu d'INSERT
+      "Prefer": "resolution=merge-duplicates,return=minimal"
     },
-    body: JSON.stringify(row)
+    body: JSON.stringify(payload)
   });
 
   if (!res.ok) throw new Error(await res.text());
@@ -964,6 +974,7 @@ async function loadLeaderboard() {
 
   draw();
 })();
+
 
 
 
