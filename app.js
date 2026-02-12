@@ -40,6 +40,7 @@ const btnCloseLeaderboard = must("btnCloseLeaderboard", document.getElementById(
 
 
 const btnPlay = must("btnPlay", document.getElementById("btnPlay"));
+const btnViewScores = must("btnViewScores", document.getElementById("btnViewScores"));
 const btnBriefOk = must("btnBriefOk", document.getElementById("btnBriefOk"));
 const btnStartRound = must("btnStartRound", document.getElementById("btnStartRound"));
 
@@ -831,6 +832,11 @@ btnPlay.onclick = () => {
   showBrief();
 };
 
+btnViewScores.onclick = async (e) => {
+  e.preventDefault();
+  await showLeaderboard();
+};
+
 btnBriefOk.onclick = () => {
   resizeCanvas();
   showGameReady();
@@ -974,6 +980,7 @@ async function loadLeaderboard() {
 
   draw();
 })();
+
 
 
 
