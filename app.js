@@ -336,6 +336,12 @@ function showSaveForm() {
   show(screenSave);
 }
 async function showLeaderboard() {
+  running = false;
+paused = false;
+dragging = false;
+canvas.style.display = "none";
+hud.style.display = "none";
+  
   hideAllScreens();
   show(screenLeaderboard);
 
@@ -832,10 +838,11 @@ btnPlay.onclick = () => {
   showBrief();
 };
 
-btnViewScores.onclick = async (e) => {
+btnViewScores.addEventListener("click", async (e) => {
   e.preventDefault();
   await showLeaderboard();
-};
+});
+
 
 btnBriefOk.onclick = () => {
   resizeCanvas();
@@ -980,6 +987,7 @@ async function loadLeaderboard() {
 
   draw();
 })();
+
 
 
 
