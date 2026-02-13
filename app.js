@@ -67,7 +67,7 @@ const optMaxMisses = must("optMaxMisses", document.getElementById("optMaxMisses"
 //  ASSETS (paths relatifs - GitHub Pages / Netlify)
 // =====================
 const ASSET_BAG = "assets/glasses.png";
-const ASSET_OBJECTS = Array.from({ length: 13 }, (_, i) => `assets/object${i + 1}.png`);
+const ASSET_OBJECTS = Array.from({ length: 15 }, (_, i) => `assets/object${i + 1}.png`);
 
 // Mapping demandé (ton dernier message)
 const EFFECTS = {
@@ -75,6 +75,9 @@ const EFFECTS = {
   "assets/object7.png":  { scoreDelta: +50, sfx: "bonus"    }, // points +
   "assets/object12.png": { lifeDelta:  -1,  sfx: "lifeDown" }, // vie -
   "assets/object13.png": { lifeDelta:  +1,  sfx: "lifeUp"   }  // vie +
+  // NOUVEAU : power-ups sac (10 secondes)
+  "assets/object14.png": { bagScale: 1.2, durationMs: 10000, sfx: "bonus" }, // +20%
+  "assets/object15.png": { bagScale: 0.8, durationMs: 10000, sfx: "malus" }  // -20%
 };
 
 // =====================
@@ -243,6 +246,13 @@ let score = 0;
 let lives = START_LIVES;
 let misses = 0;
 
+const BASE_BAG_W = 200;
+const BASE_BAG_H = 140;
+
+let bagScale = 1;          // 1 = normal
+let bagEffectUntil = 0;    // timestamp (ms)
+
+
 // contrôles sliceur
 let dragging = false;
 let grabOffsetX = 0;
@@ -405,8 +415,11 @@ function resetAllHard() {
   currentSpecialBucket = 0;
   spawnedThisBucket.object13 = false;
 
-  player.w = 200;
-  player.h = 140;
+  player.w = BASE_BAG_W;
+  player.h = BASE_BAG_H;
+  bagScale = 1;
+  bagEffectUntil = 0;
+
 
   elScore.textContent = String(score);
   elLives.textContent = String(lives);
@@ -494,11 +507,14 @@ function spawn() {
 }
 
 function collideWithBagOpening(it) {
-  const openingW = player.w * OPENING.widthRatio;
-  const openingH = player.h * OPENING.heightRatio;
+  const effectiveW = player.w * bagScale;
+  const effectiveH = player.h;
+
+  const openingW = effectiveW * OPENING.widthRatio;
+  const openingH = effectiveH * OPENING.heightRatio;
 
   const openingX = player.x - openingW / 2;
-  const openingY = (player.y - player.h / 2) + player.h * OPENING.yOffsetRatio;
+  const openingY = (player.y - effectiveH / 2) + effectiveH * OPENING.yOffsetRatio;
 
   return (
     it.x + it.r > openingX &&
@@ -507,6 +523,7 @@ function collideWithBagOpening(it) {
     it.y - it.r < openingY + openingH
   );
 }
+
 
 function addPop(text) {
   pops.push({ x: player.x, y: player.y - player.h / 2 + 20, t: 0, text });
@@ -522,6 +539,13 @@ function pauseAfterLifeLost(reasonText, nowTs) {
 
 function applyEffects(src, nowTs) {
   const fx = EFFECTS[src];
+
+    // >>> NOUVEAU : effet taille du sac temporaire
+  if (fx?.bagScale) {
+    bagScale = fx.bagScale;                 // 1.2 ou 0.8
+    bagEffectUntil = nowTs + (fx.durationMs || 10000);
+  }
+
 
   let deltaScore = 10; // default
   let deltaLife = 0;
@@ -541,7 +565,10 @@ function applyEffects(src, nowTs) {
   else if (src === "assets/object7.png") addPop("+50");
   else if (src === "assets/object12.png") addPop("-1 vie");
   else if (src === "assets/object13.png") addPop("+1 vie");
+  else if (src === "assets/object14.png") addPop("Sac +20% (10s)");
+  else if (src === "assets/object15.png") addPop("Sac -20% (10s)");
   else addPop("+10");
+
 
   sfx(sound);
 
@@ -592,6 +619,9 @@ function drawBackground() {
 function drawBag() {
   if (!SPRITES.bag) return;
 
+  const w = player.w * bagScale;
+  const h = player.h;
+
   ctx.save();
   ctx.shadowColor = "rgba(0,0,0,0.25)";
   ctx.shadowBlur = 18;
@@ -600,13 +630,14 @@ function drawBag() {
 
   ctx.drawImage(
     SPRITES.bag,
-    player.x - player.w / 2,
-    player.y - player.h / 2,
-    player.w,
-    player.h
+    player.x - w / 2,
+    player.y - h / 2,
+    w,
+    h
   );
   ctx.restore();
 }
+
 
 // Respect ratio (pas écrasé)
 function drawItem(it) {
@@ -730,6 +761,12 @@ function step(ts) {
     draw();
     requestAnimationFrame(step);
     return;
+  }
+
+    // >>> NOUVEAU : fin de l'effet taille du sac après 10s
+  if (bagEffectUntil && ts >= bagEffectUntil) {
+    bagScale = 1;
+    bagEffectUntil = 0;
   }
 
   if (!lastTs) lastTs = ts;
@@ -987,6 +1024,7 @@ async function loadLeaderboard() {
 
   draw();
 })();
+
 
 
 
