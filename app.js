@@ -75,7 +75,7 @@ const EFFECTS = {
   "assets/object7.png":  { scoreDelta: +50, sfx: "bonus"    }, // points +
   "assets/object12.png": { lifeDelta:  -1,  sfx: "lifeDown" }, // vie -
   "assets/object13.png": { lifeDelta:  +1,  sfx: "lifeUp"   },  // vie +
-  // NOUVEAU : power-ups sac (10 secondes)
+  
   "assets/object14.png": { bagScale: 1.2, durationMs: 10000, sfx: "bonus" }, // +20%
   "assets/object15.png": { bagScale: 0.8, durationMs: 10000, sfx: "malus" }  // -20%
 };
@@ -1024,6 +1024,7 @@ async function loadLeaderboard() {
 
   draw();
 })();
+
 
 
 
