@@ -107,6 +107,10 @@ const SPECIAL_BUCKET_POINTS = 500;
 // sac: peut sortir à 50% => centre clamp [0..W]
 const INPUT_SMOOTHING = 0.0;
 
+const POWER_BUCKET_POINTS = 600;
+const LEVEL20_SCORE = 19 * 200; // lvl>=19 => affiché niveau 20
+
+
 // ouverture du sac
 const OPENING = {
   widthRatio: 0.62,
@@ -261,6 +265,9 @@ let targetXInstant = 0;
 // bucket spéciaux (object13)
 let currentSpecialBucket = 0;
 let spawnedThisBucket = { object13: false };
+let currentPowerBucket = 0;
+let spawnedThisPowerBucket = false;
+
 
 // pause UI interne
 let pauseText = "";
@@ -415,6 +422,10 @@ function resetAllHard() {
   currentSpecialBucket = 0;
   spawnedThisBucket.object13 = false;
 
+  currentPowerBucket = 0;
+  spawnedThisPowerBucket = false;
+
+
   player.w = BASE_BAG_W;
   player.h = BASE_BAG_H;
   bagScale = 1;
@@ -463,19 +474,40 @@ function updateSpecialBucketIfNeeded() {
   }
 }
 
+function updatePowerBucketIfNeeded() {
+  const b = Math.floor(score / POWER_BUCKET_POINTS);
+  if (b !== currentPowerBucket) {
+    currentPowerBucket = b;
+    spawnedThisPowerBucket = false;
+  }
+}
+
 function pickObjectSrc() {
   updateSpecialBucketIfNeeded();
+  updatePowerBucketIfNeeded();
 
-  // pool normal: retirer object13 (sinon il peut sortir “par hasard”)
-  const pool = ASSET_OBJECTS.filter(src => src !== "assets/object13.png");
+  // Power-ups sac: uniquement à partir du niveau 20 (score >= 3800)
+  // et max 1 apparition par tranche de 600 points
+  if (score >= LEVEL20_SCORE && !spawnedThisPowerBucket) {
+    spawnedThisPowerBucket = true;
+    return Math.random() < 0.5 ? "assets/object14.png" : "assets/object15.png";
+  }
 
-  // 1 apparition max / bucket (tant qu'il n'est pas apparu)
+  // pool normal: retirer object13 + object14 + object15 (sinon ils peuvent sortir “par hasard”)
+  const pool = ASSET_OBJECTS.filter(src =>
+    src !== "assets/object13.png" &&
+    src !== "assets/object14.png" &&
+    src !== "assets/object15.png"
+  );
+
+  // object13 : 1 apparition max / 500 points
   if (!spawnedThisBucket.object13) {
     if (Math.random() < 0.03) return "assets/object13.png";
   }
 
   return pool[Math.floor(Math.random() * pool.length)];
 }
+
 
 // =====================
 //  SPAWN / COLLISION
@@ -493,14 +525,17 @@ function spawn() {
   const { speedMin, speedMax } = currentDifficulty(score);
   const r = 16;
 
+    const isBagPower = (src === "assets/object14.png" || src === "assets/object15.png");
+
   items.push({
     id: nextItemId++, // <<< MODIF: id pour tri stable
     x: rand(r + 10, canvas._w - r - 10),
     y: -60,
     r,
     vy: rand(speedMin, speedMax),
-    ang: rand(0, Math.PI * 2),
-    rot: rand(BASE.rotMin, BASE.rotMax),
+    ang: isBagPower ? 0 : rand(0, Math.PI * 2),
+    rot: isBagPower ? 0 : rand(BASE.rotMin, BASE.rotMax),
+
     src,
     sprite
   });
@@ -796,7 +831,7 @@ function step(ts) {
     if (!it) { items.splice(i, 1); continue; }
 
     it.y += it.vy * dt;
-    it.ang += it.rot * dt;
+    if (it.rot) it.ang += it.rot * dt;
 
     if (collideWithBagOpening(it)) {
       const stopFrame = applyEffects(it.src, ts);
@@ -1024,6 +1059,7 @@ async function loadLeaderboard() {
 
   draw();
 })();
+
 
 
 
