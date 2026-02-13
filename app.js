@@ -531,7 +531,7 @@ function applyEffects(src, nowTs) {
   if (fx?.lifeDelta != null) { deltaLife = fx.lifeDelta; sound = fx.sfx || sound; }
 
   score = Math.max(0, score + deltaScore);
-  lives = clamp(lives + deltaLife, 0, 9);
+  lives = clamp(lives + deltaLife, 0, 20);
 
   elScore.textContent = String(score);
   elLives.textContent = String(lives);
@@ -987,6 +987,7 @@ async function loadLeaderboard() {
 
   draw();
 })();
+
 
 
 
