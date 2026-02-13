@@ -71,13 +71,13 @@ const ASSET_OBJECTS = Array.from({ length: 15 }, (_, i) => `assets/object${i + 1
 
 // Mapping demandé (ton dernier message)
 const EFFECTS = {
-  "assets/object3.png":  { scoreDelta: -50, sfx: "malus"    }, // points -
-  "assets/object7.png":  { scoreDelta: +50, sfx: "bonus"    }, // points +
-  "assets/object12.png": { lifeDelta:  -1,  sfx: "lifeDown" }, // vie -
-  "assets/object13.png": { lifeDelta:  +1,  sfx: "lifeUp"   },  // vie +
-  
-  "assets/object14.png": { bagScale: 1.2, durationMs: 10000, sfx: "bonus" }, // +20%
-  "assets/object15.png": { bagScale: 0.8, durationMs: 10000, sfx: "malus" }  // -20%
+  "assets/object3.png":  { scoreDelta: -50, sfx: "malus" },
+  "assets/object7.png":  { scoreDelta: +50, sfx: "bonus" },
+  "assets/object12.png": { lifeDelta:  -1,  sfx: "lifeDown" },
+  "assets/object13.png": { lifeDelta:  +1,  sfx: "lifeUp" },
+
+  "assets/object14.png": { bagScale: 1.2, durationMs: 10000, sfx: "bonus" },
+  "assets/object15.png": { bagScale: 0.8, durationMs: 10000, sfx: "malus" }
 };
 
 // =====================
@@ -1024,6 +1024,7 @@ async function loadLeaderboard() {
 
   draw();
 })();
+
 
 
 
