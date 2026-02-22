@@ -968,31 +968,84 @@ btnCloseLeaderboard.onclick = () => {
 // =====================
 //  SUPABASE: submit score
 // =====================
-async function submitScore(row) {
-  // 1) construit la clé unique identique à celle en SQL
-  const player_key =
-    (row.first_name || "").trim().toLowerCase() +
-    "|" +
-    (row.last_name || "").trim().toLowerCase();
+function buildPlayerKey(row) {
+  return (row.first_name || "").trim().toLowerCase() + "|" + (row.last_name || "").trim().toLowerCase();
+}
 
-  // 2) on envoie player_key + les champs
-  const payload = { ...row, player_key };
+async function getExistingScore(player_key) {
+  const url =
+    `${SUPABASE_URL}/rest/v1/scores` +
+    `?select=id,score` +
+    `&player_key=eq.${encodeURIComponent(player_key)}` +
+    `&limit=1`;
 
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/scores?on_conflict=player_key`, {
+  const res = await fetch(url, {
+    headers: {
+      "apikey": SUPABASE_KEY,
+      "Authorization": `Bearer ${SUPABASE_KEY}`
+    }
+  });
+
+  if (!res.ok) throw new Error(await res.text());
+  const rows = await res.json();
+  return rows[0] || null;
+}
+
+async function insertScore(row) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/scores`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "apikey": SUPABASE_KEY,
       "Authorization": `Bearer ${SUPABASE_KEY}`,
-      // merge-duplicates => si player_key existe, ça UPDATE au lieu d'INSERT
-      "Prefer": "resolution=merge-duplicates,return=minimal"
+      "Prefer": "return=minimal"
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(row) // <-- PAS de player_key
   });
 
   if (!res.ok) throw new Error(await res.text());
 }
 
+async function updateScore(player_key, row) {
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/scores?player_key=eq.${encodeURIComponent(player_key)}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
+        "Prefer": "return=minimal"
+      },
+      body: JSON.stringify({
+        score: row.score,
+        email: row.email,
+        phone: row.phone,
+        first_name: row.first_name,
+        last_name: row.last_name
+      })
+    }
+  );
+
+  if (!res.ok) throw new Error(await res.text());
+}
+
+async function submitScoreBest(row) {
+  const player_key = buildPlayerKey(row);
+  const existing = await getExistingScore(player_key);
+
+  if (!existing) {
+    await insertScore(row);
+    return { status: "inserted" };
+  }
+
+  if (row.score > (existing.score ?? 0)) {
+    await updateScore(player_key, row);
+    return { status: "updated", previous: existing.score };
+  }
+
+  return { status: "kept", previous: existing.score };
+}
 
 submitForm.onsubmit = async (e) => {
   e.preventDefault();
@@ -1007,8 +1060,15 @@ submitForm.onsubmit = async (e) => {
   };
 
   try {
-    await submitScore(row);
-    saveMsg.textContent = "Score enregistré ✅";
+    const result = await submitScoreBest(row);
+
+if (result.status === "inserted") {
+  saveMsg.textContent = "Score enregistré ✅";
+} else if (result.status === "updated") {
+  saveMsg.textContent = `Nouveau record ✅ (ancien : ${result.previous})`;
+} else {
+  saveMsg.textContent = `Score non amélioré (ton record : ${result.previous})`;
+}
 
     hide(screenSave);
     await showLeaderboard();
@@ -1059,6 +1119,7 @@ async function loadLeaderboard() {
 
   draw();
 })();
+
 
 
 
