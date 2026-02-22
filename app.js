@@ -1000,10 +1000,13 @@ async function insertScore(row) {
       "Authorization": `Bearer ${SUPABASE_KEY}`,
       "Prefer": "return=minimal"
     },
-    body: JSON.stringify(row) // <-- PAS de player_key
+    body: JSON.stringify(row)
   });
 
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`INSERT ${res.status}: ${txt}`);
+  }
 }
 
 async function updateScore(player_key, row) {
@@ -1027,7 +1030,10 @@ async function updateScore(player_key, row) {
     }
   );
 
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`PATCH ${res.status}: ${txt}`);
+  }
 }
 
 async function submitScoreBest(row) {
@@ -1049,7 +1055,7 @@ async function submitScoreBest(row) {
 
 submitForm.onsubmit = async (e) => {
   e.preventDefault();
-  saveMsg.textContent = "";
+  saveMsg.textContent = "Enregistrement…";
 
   const row = {
     first_name: document.getElementById("firstName").value.trim(),
@@ -1062,19 +1068,22 @@ submitForm.onsubmit = async (e) => {
   try {
     const result = await submitScoreBest(row);
 
-if (result.status === "inserted") {
-  saveMsg.textContent = "Score enregistré ✅";
-} else if (result.status === "updated") {
-  saveMsg.textContent = `Nouveau record ✅ (ancien : ${result.previous})`;
-} else {
-  saveMsg.textContent = `Score non amélioré (ton record : ${result.previous})`;
-}
+    if (result.status === "inserted") {
+      saveMsg.textContent = "Score enregistré ✅";
+    } else if (result.status === "updated") {
+      saveMsg.textContent = `Nouveau record ✅ (ancien : ${result.previous})`;
+    } else {
+      saveMsg.textContent = `Score non amélioré (ton record : ${result.previous})`;
+    }
 
-    hide(screenSave);
-    await showLeaderboard();
-
+    // 🔒 Ne passe au leaderboard que si insert OU update
+    if (result.status === "inserted" || result.status === "updated") {
+      hide(screenSave);
+      await showLeaderboard();
+    }
   } catch (err) {
-    saveMsg.textContent = "Erreur : " + err.message;
+    saveMsg.textContent = "Erreur API : " + (err?.message || String(err));
+    console.error(err);
   }
 };
 
@@ -1119,6 +1128,7 @@ async function loadLeaderboard() {
 
   draw();
 })();
+
 
 
 
